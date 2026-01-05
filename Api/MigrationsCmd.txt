@@ -1,2 +1,2 @@
-dotnet ef migrations add Jobs -p Infrastructure -s Api
+dotnet ef migrations add [Migration name] -p Infrastructure -s Api
 dotnet ef database update -p Infrastructure -s Api

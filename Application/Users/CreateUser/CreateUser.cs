@@ -1,37 +1,43 @@
 using Application.Abstractions;
 using Domain.Users;
+using MediatR;
 
 namespace Application.Users.CreateUser;
 
-public static class CreateUser
+public sealed record CreateUserCommand(string Name, string Email)
+    : IRequest<CreateUserResult>;
+
+public sealed record CreateUserResult(Guid Id, string Name, string Email, DateTime CreatedAtUtc);
+
+public sealed class CreateUserHandler : IRequestHandler<CreateUserCommand, CreateUserResult>
 {
-    public sealed record Request(string Name, string Email);
+    private readonly IUsersRepository _users;
+    private readonly IUnitOfWork _uow;
 
-    public sealed record Result(Guid Id, string Name, string Email, DateTime CreatedAtUtc);
-
-    public static async Task<Result> HandleAsync(
-        Request request,
-        IUsersRepository users,
-        IUnitOfWork uow,
-        CancellationToken ct)
+    public CreateUserHandler(IUsersRepository users, IUnitOfWork uow)
     {
-        // Basic validation (you can swap to FluentValidation later)
+        _users = users;
+        _uow = uow;
+    }
+
+    public async Task<CreateUserResult> Handle(CreateUserCommand request, CancellationToken ct)
+    {
         if (string.IsNullOrWhiteSpace(request.Name))
             throw new ArgumentException("Name is required.");
         if (string.IsNullOrWhiteSpace(request.Email))
             throw new ArgumentException("Email is required.");
 
-        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+        var email = request.Email.Trim().ToLowerInvariant();
 
-        var existing = await users.GetByEmailAsync(normalizedEmail, ct);
+        var existing = await _users.GetByEmailAsync(email, ct);
         if (existing is not null)
             throw new InvalidOperationException("Email already exists.");
 
-        var user = new User(request.Name, normalizedEmail);
+        var user = new User(request.Name, email);
 
-        await users.AddAsync(user, ct);
-        await uow.SaveChangesAsync(ct);
+        await _users.AddAsync(user, ct);
+        await _uow.SaveChangesAsync(ct);
 
-        return new Result(user.Id, user.Name, user.Email, user.CreatedAtUtc);
+        return new CreateUserResult(user.Id, user.Name, user.Email, user.CreatedAtUtc);
     }
 }

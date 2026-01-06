@@ -13,12 +13,10 @@ public sealed record CreateJobResult(Guid Id, string Name, DateTime CreatedAtUtc
 public sealed class CreateJobHandler : IRequestHandler<CreateJobCommand, CreateJobResult>
 {
     private readonly IJobsRepository _jobs;
-    private readonly IUnitOfWork _uow;
 
-    public CreateJobHandler(IJobsRepository jobs, IUnitOfWork uow)
+    public CreateJobHandler(IJobsRepository jobs)
     {
         _jobs = jobs;
-        _uow = uow;
     }
 
     public async Task<CreateJobResult> Handle(CreateJobCommand request, CancellationToken ct)
@@ -35,7 +33,6 @@ public sealed class CreateJobHandler : IRequestHandler<CreateJobCommand, CreateJ
         var job = new Job(name);
 
         await _jobs.AddAsync(job, ct);
-        await _uow.SaveChangesAsync(ct);
 
         return new CreateJobResult(job.Id, job.Name ,job.CreatedAtUtc);
     }

@@ -12,12 +12,10 @@ public sealed record CreateUserResult(Guid Id, string Name, string Email, DateTi
 public sealed class CreateUserHandler : IRequestHandler<CreateUserCommand, CreateUserResult>
 {
     private readonly IUsersRepository _users;
-    private readonly IUnitOfWork _uow;
 
-    public CreateUserHandler(IUsersRepository users, IUnitOfWork uow)
+    public CreateUserHandler(IUsersRepository users)
     {
         _users = users;
-        _uow = uow;
     }
 
     public async Task<CreateUserResult> Handle(CreateUserCommand request, CancellationToken ct)
@@ -36,7 +34,6 @@ public sealed class CreateUserHandler : IRequestHandler<CreateUserCommand, Creat
         var user = new User(request.Name, email);
 
         await _users.AddAsync(user, ct);
-        await _uow.SaveChangesAsync(ct);
 
         return new CreateUserResult(user.Id, user.Name, user.Email, user.CreatedAtUtc);
     }

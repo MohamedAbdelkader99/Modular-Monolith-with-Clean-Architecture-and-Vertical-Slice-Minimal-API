@@ -11,15 +11,10 @@ builder.Services
     .AddApiOptions(builder.Configuration)
     .AddApiServices()
     .AddPersistence(builder.Configuration)
-    .AddSwaggerIfEnabled(builder.Configuration);
+    .AddSwaggerIfEnabled(builder.Configuration)
+    .AddMediatRConfig(builder.Configuration);
 
 builder.Services.AddValidatorsFromAssembly(typeof(Application.AssemblyMarker).Assembly);
-
-builder.Services.AddMediatR(cfg =>
-{
-    cfg.RegisterServicesFromAssembly(typeof(Application.AssemblyMarker).Assembly);
-    cfg.AddOpenBehavior(typeof(Application.Behaviors.ValidationBehavior<,>));
-});
 
 
 var app = builder.Build();

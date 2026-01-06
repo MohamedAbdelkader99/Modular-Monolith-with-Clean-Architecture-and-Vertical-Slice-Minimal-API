@@ -1,4 +1,5 @@
 ﻿using Api.Configuration;
+using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -14,24 +15,71 @@ namespace Api.Extensions
                 errorApp.Run(async context =>
                 {
                     var feature = context.Features.Get<IExceptionHandlerFeature>();
-                    var ex = feature?.Error;
+                    var exception = feature?.Error;
 
-                    var (status, title) = ex switch
+                    if (exception is null)
+                        return;
+
+                    ProblemDetails problem;
+
+                    switch (exception)
                     {
-                        ArgumentException => (StatusCodes.Status400BadRequest, "Validation error"),
-                        InvalidOperationException => (StatusCodes.Status409Conflict, "Conflict"),
-                        _ => (StatusCodes.Status500InternalServerError, "Server error")
-                    };
+                        // FluentValidation errors (400)
+                        case ValidationException validationException:
+                            context.Response.StatusCode = StatusCodes.Status400BadRequest;
 
-                    context.Response.StatusCode = status;
+                            problem = new ValidationProblemDetails(
+                                validationException.Errors
+                                    .GroupBy(e => e.PropertyName)
+                                    .ToDictionary(
+                                        g => g.Key,
+                                        g => g.Select(e => e.ErrorMessage).ToArray()
+                                    ))
+                            {
+                                Title = "Validation failed",
+                                Status = StatusCodes.Status400BadRequest,
+                                Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1"
+                            };
+                            break;
 
-                    var problem = new ProblemDetails
-                    {
-                        Status = status,
-                        Title = title,
-                        Detail = ex?.Message
-                    };
+                        // Bad request (400)
+                        case ArgumentException argException:
+                            context.Response.StatusCode = StatusCodes.Status400BadRequest;
 
+                            problem = new ProblemDetails
+                            {
+                                Title = "Invalid request",
+                                Detail = argException.Message,
+                                Status = StatusCodes.Status400BadRequest
+                            };
+                            break;
+
+                        // Conflict (409)
+                        case InvalidOperationException invalidOpException:
+                            context.Response.StatusCode = StatusCodes.Status409Conflict;
+
+                            problem = new ProblemDetails
+                            {
+                                Title = "Conflict",
+                                Detail = invalidOpException.Message,
+                                Status = StatusCodes.Status409Conflict
+                            };
+                            break;
+
+                        // Unhandled errors (500)
+                        default:
+                            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+
+                            problem = new ProblemDetails
+                            {
+                                Title = "Internal server error",
+                                Detail = "An unexpected error occurred.",
+                                Status = StatusCodes.Status500InternalServerError
+                            };
+                            break;
+                    }
+
+                    context.Response.ContentType = "application/problem+json";
                     await context.Response.WriteAsJsonAsync(problem);
                 });
             });
@@ -48,7 +96,6 @@ namespace Api.Extensions
             app.UseSwagger();
             app.UseSwaggerUI();
 
-            // default route -> swagger (dev-friendly)
             if (app.Environment.IsDevelopment())
                 app.MapGet("/", () => Results.Redirect("/swagger"));
 

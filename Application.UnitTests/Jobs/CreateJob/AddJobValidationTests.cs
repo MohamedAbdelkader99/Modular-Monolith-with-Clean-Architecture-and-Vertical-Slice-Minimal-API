@@ -11,7 +11,7 @@ public sealed class AddJobValidationTests
     [Fact]
     public void Should_fail_when_name_is_empty()
     {
-        var cmd = new CreateJobCommand("command");
+        var cmd = new CreateJobCommand("");
 
         var result = _validator.TestValidate(cmd);
 

@@ -26,7 +26,6 @@ public sealed class TransactionBehavior<TRequest, TResponse> : IPipelineBehavior
         {
             var response = await next();
 
-            // ✅ Single SaveChanges per command
             await _db.SaveChangesAsync(ct);
             await _db.CommitTransactionAsync(ct);
 

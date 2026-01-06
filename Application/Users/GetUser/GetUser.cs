@@ -1,19 +1,23 @@
 ﻿using Application.Abstractions;
+using MediatR;
 
 namespace Application.Users.GetUser;
 
-public static class GetUser
-{
-    public sealed record Result(Guid Id, string Name, string Email, DateTime CreatedAtUtc);
+public sealed record GetUserQuery(Guid Id) : IRequest<GetUserResult?>;
 
-    public static async Task<Result?> HandleAsync(
-        Guid id,
-        IUsersRepository users,
-        CancellationToken ct)
+public sealed record GetUserResult(Guid Id, string Name, string Email, DateTime CreatedAtUtc);
+
+public sealed class GetUserHandler : IRequestHandler<GetUserQuery, GetUserResult?>
+{
+    private readonly IUsersRepository _users;
+
+    public GetUserHandler(IUsersRepository users) => _users = users;
+
+    public async Task<GetUserResult?> Handle(GetUserQuery request, CancellationToken ct)
     {
-        var user = await users.GetByIdAsync(id, ct);
+        var user = await _users.GetByIdAsync(request.Id, ct);
         if (user is null) return null;
 
-        return new Result(user.Id, user.Name, user.Email, user.CreatedAtUtc);
+        return new GetUserResult(user.Id, user.Name, user.Email, user.CreatedAtUtc);
     }
 }

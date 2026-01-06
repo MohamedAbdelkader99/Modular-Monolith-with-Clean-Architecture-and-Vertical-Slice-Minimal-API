@@ -1,5 +1,6 @@
 ﻿using Api.Configuration;
 using Application.Abstractions;
+using FluentValidation;
 using Infrastructure.Jobs;
 using Infrastructure.Persistence;
 using Infrastructure.Users;
@@ -36,10 +37,11 @@ namespace Api.Extensions
                 throw new InvalidOperationException("Missing connection string: ConnectionStrings:Default");
 
             services.AddDbContext<AppDbContext>(opt => opt.UseSqlServer(cs));
+            services.AddScoped<Application.Abstractions.IAppDbContext>(sp =>
+                    sp.GetRequiredService<Infrastructure.Persistence.AppDbContext>());
 
             services.AddScoped<IUsersRepository, UsersRepository>();
             services.AddScoped<IJobsRepository, JobsRepository>();
-            services.AddScoped<IUnitOfWork, UnitOfWork>();
 
             return services;
         }
@@ -52,10 +54,30 @@ namespace Api.Extensions
 
             services.AddSwaggerGen(c =>
             {
-                // Fix schema name conflicts: Request, Response, etc.
                 c.CustomSchemaIds(t => t.FullName!.Replace("+", "."));
             });
 
+            return services;
+        }
+        public static IServiceCollection AddMediatRConfig(this IServiceCollection services, IConfiguration config)
+        {
+            services.AddMediatR(cfg =>
+            {
+                cfg.RegisterServicesFromAssembly(typeof(Application.AssemblyMarker).Assembly);
+
+                // If you already added ValidationBehavior, keep it first
+                cfg.AddOpenBehavior(typeof(Application.Behaviors.ValidationBehavior<,>));
+
+                // Add transaction behavior after validation
+                cfg.AddOpenBehavior(typeof(Application.Behaviors.TransactionBehavior<,>));
+            });
+
+
+            services.AddMediatR(cfg =>
+            {
+                cfg.RegisterServicesFromAssembly(typeof(Application.AssemblyMarker).Assembly);
+                cfg.AddOpenBehavior(typeof(Application.Behaviors.ValidationBehavior<,>));
+            });
             return services;
         }
     }

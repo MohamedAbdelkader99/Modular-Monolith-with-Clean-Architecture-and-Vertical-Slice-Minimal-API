@@ -6,7 +6,7 @@ using System.Reflection.Emit;
 
 namespace Infrastructure.Persistence;
 
-public sealed class AppDbContext : DbContext
+public sealed partial class AppDbContext : DbContext
 {
     public DbSet<User> Users => Set<User>();
     public DbSet<Job> Jobs => Set<Job>();

@@ -1,5 +1,6 @@
 using Application.Abstractions;
 using Application.Users.CreateUser;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Features.Users;
@@ -9,18 +10,14 @@ public static class CreateUserEndpoint
     public static RouteGroupBuilder MapCreateUser(this RouteGroupBuilder group)
     {
         group.MapPost("/", async (
-            [FromBody] CreateUser.Request request,
-            IUsersRepository users,
-            IUnitOfWork uow,
-            HttpContext http,
+            [FromBody] CreateUserCommand command,
+            IMediator mediator,
             CancellationToken ct) =>
         {
-            var result = await CreateUser.HandleAsync(request, users, uow, ct);
+            var result = await mediator.Send(command, ct);
             return Results.Created($"/api/users/{result.Id}", result);
         })
-        .WithName("CreateUser")
-        //.WithOpenApi()
-        ;
+        .WithName("CreateUser");
 
         return group;
     }

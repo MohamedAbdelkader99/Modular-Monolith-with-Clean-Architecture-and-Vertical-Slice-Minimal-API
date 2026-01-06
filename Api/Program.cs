@@ -1,6 +1,7 @@
 using Api.Extensions;
 using Api.Features.Jobs;
 using Api.Features.Users;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using System;
 
@@ -10,7 +11,11 @@ builder.Services
     .AddApiOptions(builder.Configuration)
     .AddApiServices()
     .AddPersistence(builder.Configuration)
-    .AddSwaggerIfEnabled(builder.Configuration);
+    .AddSwaggerIfEnabled(builder.Configuration)
+    .AddMediatRConfig(builder.Configuration);
+
+builder.Services.AddValidatorsFromAssembly(typeof(Application.AssemblyMarker).Assembly);
+
 
 var app = builder.Build();
 
@@ -22,12 +27,8 @@ app.MapGet("/wazefa", () =>
     Results.Ok(new { status = "ok" });
 });
 // Users module routes
-var users = app.MapGroup("/api/users");
-users.MapCreateUser();
-users.MapGetUser();
+app.MapGroup("/api/users").MapCreateUser().MapGetUser();
 // Jobs module routes
-var jobs = app.MapGroup("/api/jobs");
-jobs.MapCreateJob();
-jobs.MapGetJob();
+app.MapGroup("/api/jobs").MapCreateJob().MapGetJob();
 
 app.Run();

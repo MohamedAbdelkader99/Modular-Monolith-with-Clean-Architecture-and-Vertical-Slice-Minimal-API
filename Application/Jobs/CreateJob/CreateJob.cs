@@ -1,34 +1,39 @@
+
 using Application.Abstractions;
 using Domain.Jobs;
+using MediatR;
 
 namespace Application.Jobs.CreateJob;
 
-public static class CreateJob
+public sealed record CreateJobCommand(string Name)
+    : IRequest<CreateJobResult>;
+
+public sealed record CreateJobResult(Guid Id, string Name, DateTime CreatedAtUtc);
+
+public sealed class CreateJobHandler : IRequestHandler<CreateJobCommand, CreateJobResult>
 {
-    public sealed record Request(string Name);
+    private readonly IJobsRepository _jobs;
 
-    public sealed record Result(Guid Id, string Name, DateTime CreatedAtUtc);
-
-    public static async Task<Result> HandleAsync(
-        Request request,
-        IJobsRepository jobs,
-        IUnitOfWork uow,
-        CancellationToken ct)
+    public CreateJobHandler(IJobsRepository jobs)
     {
-        // Basic validation (you can swap to FluentValidation later)
+        _jobs = jobs;
+    }
+
+    public async Task<CreateJobResult> Handle(CreateJobCommand request, CancellationToken ct)
+    {
         if (string.IsNullOrWhiteSpace(request.Name))
             throw new ArgumentException("Name is required.");
-        
-        string jobName = request.Name;
-        var existing = await jobs.GetByNameAsync(jobName, ct);
+
+        var name = request.Name.Trim().ToLowerInvariant();
+
+        var existing = await _jobs.GetByNameAsync(name, ct);
         if (existing is not null)
             throw new InvalidOperationException("Name already exists.");
 
-        var job = new Job(request.Name);
+        var job = new Job(name);
 
-        await jobs.AddAsync(job, ct);
-        await uow.SaveChangesAsync(ct);
+        await _jobs.AddAsync(job, ct);
 
-        return new Result(job.Id, job.Name, job.CreatedAtUtc);
+        return new CreateJobResult(job.Id, job.Name ,job.CreatedAtUtc);
     }
 }
